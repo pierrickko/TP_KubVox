@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubvox-asterisk
+  labels:
+    app: kubvox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubvox
+  template:
+    metadata:
+      labels:
+        app: kubvox
+    spec:
+      # hostNetwork: true est souvent nécessaire pour le RTP (voix) sans configuration NAT complexe
+      # Si false, nécessite un Ingress UDP ou un NodePort bien configuré
+      hostNetwork: true
+      containers:
+      - name: asterisk
+        image: kubvox:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          capabilities:
+            add: ["NET_ADMIN", "SYS_NICE"] # Utile pour la priorité réseau/voix
+        ports:
+        - containerPort: 5060
+          name: sip-udp
+          protocol: UDP
+        - containerPort: 5060
+          name: sip-tcp
+          protocol: TCP
+        # Volume pour injecter les configs
+        volumeMounts:
+        - name: asterisk-config-vol
+          mountPath: /etc/asterisk
+      volumes:
+      - name: asterisk-config-vol
+        configMap:
+          name: asterisk-configmap
